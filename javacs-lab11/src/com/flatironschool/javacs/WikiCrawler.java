@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.Iterator;
 
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -53,9 +54,85 @@ public class WikiCrawler {
 	 * @return Number of pages indexed.
 	 * @throws IOException
 	 */
+
+// When testing is true, the crawl method should:
+
+// Choose and remove a URL from the queue in FIFO order.
+
+// Read the contents of the page using WikiFetcher.readWikipedia, which reads cached copies of pages we have included in this repository for testing purposes (to avoid problems if the Wikipedia version changes).
+
+// It should index pages regardless of whether they are already indexed.
+
+// It should find all the internal links on the page and add them to the queue in the order they appear. "Internal links" are links to other Wikipedia pages.
+
+// And it should return the URL of the page it indexed.
+
+
+
+
+// When testing is false, this method should:
+
+// Choose and remove a URL from the queue in FIFO order.
+
+// If the URL is already indexed, it should not index it again, and should return null.
+
+// Otherwise it should read the contents of the page using WikiFetcher.fetchWikipedia, which reads current content from the Web.
+
+// Then it should index the page, add links to the queue, and return the URL of the page it indexed.
+
 	public String crawl(boolean testing) throws IOException {
         // FILL THIS IN!
-		return null;
+        if (queue.isEmpty()) {
+            return null;
+        }
+        String url = queue.poll();
+        System.out.println("Crawling " + url);
+
+        if (testing==false && index.isIndexed(url)) {
+            System.out.println("Already indexed.");
+            return null;
+        }
+
+        Elements paragraphs;
+        if (testing) {
+            paragraphs = wf.readWikipedia(url);
+        } else {
+            paragraphs = wf.fetchWikipedia(url);
+        }
+        index.indexPage(url, paragraphs);
+        queueInternalLinks(paragraphs);
+        return url;
+    
+
+
+
+
+
+
+
+   //      if (testing){
+   //      	String url = queue.remove();
+        	
+			// Elements paragraphs = wf.readWikipedia(url);
+
+   //      	index.indexPage(url, paragraphs);
+			// queueInternalLinks(paragraphs);
+
+   //      	return url;
+   //      } else {
+			// String url = queue.remove();
+			// if (index.isIndexed(url)){
+			// 	return null;
+			// } else {
+			// 	Elements paragraphs = wf.fetchWikipedia(url);
+
+	  //       	index.indexPage(url, paragraphs);
+	  //       	queueInternalLinks(paragraphs);
+				
+	  //       	return url;
+			// }
+   //      }
+		//return null;
 	}
 	
 	/**
@@ -66,6 +143,32 @@ public class WikiCrawler {
 	// NOTE: absence of access level modifier means package-level
 	void queueInternalLinks(Elements paragraphs) {
         // FILL THIS IN!
+
+
+        for (Element paragraph: paragraphs) {
+            queueInternalLinks(paragraph);
+        }
+    }
+
+    private void queueInternalLinks(Element paragraph) {
+        Elements elts = paragraph.select("a[href]");
+        for (Element elt: elts) {
+            String relURL = elt.attr("href");
+
+            if (relURL.startsWith("/wiki/")) {
+                String absURL = elt.attr("abs:href");
+                queue.offer(absURL);
+            }
+        }
+		// Elements links = paragraphs.select("a[href*=/]");
+		// Iterator<Element> iter = links.iterator();
+
+		// // String [] words = (String.valueOf(paras)).split("\\s+");
+		// // String curr;
+
+  //   	while (iter.hasNext()){
+	 //    	queue.add(String.valueOf(iter.next()));
+  //   	}
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -86,7 +189,7 @@ public class WikiCrawler {
 			res = wc.crawl(false);
 
             // REMOVE THIS BREAK STATEMENT WHEN crawl() IS WORKING
-            break;
+        
 		} while (res == null);
 		
 		Map<String, Integer> map = index.getCounts("the");
